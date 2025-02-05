@@ -1,0 +1,172 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Lato', system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  @apply bg-gray-900 text-white;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
+
+.note {
+  @apply rounded p-3 cursor-move relative;
+  transition: all 0.15s ease;
+  box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(135deg, var(--note-color) 0%, var(--note-color-light) 100%);
+  overflow: hidden;
+}
+
+.note::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 40px;
+  height: 15px;
+  background-color: rgba(255, 255, 255, 0.5);
+  transform: translateX(-50%);
+  clip-path: polygon(0% 0%, 100% 0%, 85% 100%, 15% 100%);
+  opacity: 0.5;
+}
+
+.note:hover {
+  z-index: 50;
+  box-shadow: 3px 3px 15px rgba(0, 0, 0, 0.3);
+}
+
+/* Resize handle styles */
+.react-resizable-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: transparent;
+  padding: 0;
+  transition: opacity 0.3s;
+}
+
+.react-resizable-handle-se {
+  right: -6px;
+  bottom: -6px;
+  cursor: se-resize;
+}
+
+.react-resizable-handle-e {
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: e-resize;
+}
+
+.react-resizable-handle-s {
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: s-resize;
+}
+
+.resize-frame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 2px dashed #4a90e2;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  border-radius: 8px;
+}
+
+.resizing .resize-frame {
+  opacity: 1;
+}
+
+.resize-corner {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #4a90e2;
+  border-radius: 50%;
+}
+
+.resize-corner-tl { top: -4px; left: -4px; }
+.resize-corner-tr { top: -4px; right: -4px; }
+.resize-corner-bl { bottom: -4px; left: -4px; }
+.resize-corner-br { bottom: -4px; right: -4px; }
+
+/* Hide resize handles when dragging */
+.note:active .react-resizable-handle {
+  opacity: 0;
+}
+
+/* Add hover effect for resize handles */
+.react-resizable-handle:hover::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: rgba(74, 144, 226, 0.2);
+  border-radius: 50%;
+}
