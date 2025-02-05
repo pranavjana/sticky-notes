@@ -3,7 +3,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useState, useEffect } from 'react';
 import { Resizable } from 're-resizable';
 
-const Note = ({ id, content, position, color, onDelete, onUpdate, onDragEnd }) => {
+const Note = ({ id, content, position, color, onDelete, onUpdate, onDragEnd, onDrag }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [noteContent, setNoteContent] = useState(content);
   const [size, setSize] = useState({ width: 200, height: 200 });
@@ -40,10 +40,17 @@ const Note = ({ id, content, position, color, onDelete, onUpdate, onDragEnd }) =
     }
   };
 
+  const handleDrag = (event, info) => {
+    if (!isResizing) {
+      onDrag(id, info, size);
+    }
+  };
+
   return (
     <motion.div
-      drag={!isResizing}
+      drag={!isEditing && !isResizing}
       dragMomentum={false}
+      onDrag={handleDrag}
       onDragEnd={handleDragEnd}
       initial={{ x: position.x, y: position.y }}
       animate={{ x: localPosition.x, y: localPosition.y }}
@@ -73,11 +80,11 @@ const Note = ({ id, content, position, color, onDelete, onUpdate, onDragEnd }) =
         maxHeight={400}
         enable={{
           top: false,
-          right: true,
-          bottom: true,
+          right: !isEditing,
+          bottom: !isEditing,
           left: false,
           topRight: false,
-          bottomRight: true,
+          bottomRight: !isEditing,
           bottomLeft: false,
           topLeft: false
         }}
