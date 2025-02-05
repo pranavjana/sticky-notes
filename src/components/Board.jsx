@@ -60,6 +60,19 @@ const Board = () => {
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-gray-900">
+      <div className="board-grid" style={{
+        backgroundSize: '40px 40px',
+        backgroundImage: `
+          linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px)
+        `,
+        width: '100%',
+        height: '100%',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        pointerEvents: 'none'
+      }} />
       <button
         onClick={addNote}
         className="fixed bottom-6 right-6 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-colors z-50 flex items-center justify-center w-12 h-12"
