@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { SignIn, SignedIn, SignedOut, useUser, useClerk } from '@clerk/clerk-react';
 import Board from './components/Board';
-import { PencilIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 
 function App() {
   const [title, setTitle] = useState('Sticky Notes Dashboard');
@@ -64,14 +64,15 @@ function App() {
                   </button>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-neutral-400">
+                  <span className="text-neutral-400 text-sm">
                     {userEmail}
                   </span>
                   <button
                     onClick={() => signOut()}
-                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                    className="p-2 text-red-400/70 hover:text-red-400 transition-colors rounded-full hover:bg-neutral-700/50"
+                    title="Sign out"
                   >
-                    Sign Out
+                    <ArrowRightOnRectangleIcon className="h-5 w-5" />
                   </button>
                 </div>
               </div>

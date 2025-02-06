@@ -1,16 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import Note from './Note';
+import ColorPicker from './ColorPicker';
 import { AnimatePresence } from 'framer-motion';
 import { getNotes, createNote, updateNote, deleteNote, batchUpdateNotes } from '../services/noteService';
-
-const COLORS = [
-  '#fef3c7', // yellow
-  '#fee2e2', // pink
-  '#dcfce7', // green
-  '#dbeafe', // blue
-  '#f5d0fe', // purple
-  '#ffedd5', // orange
-];
+import { PlusIcon } from '@heroicons/react/24/outline';
 
 const GRID_SIZE = 40;
 const SNAP_THRESHOLD = 15;
@@ -30,6 +23,7 @@ const Board = () => {
   const [activeGridLines, setActiveGridLines] = useState({ horizontal: null, vertical: null });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
 
   // Fetch notes from MongoDB when component mounts
   useEffect(() => {
@@ -133,13 +127,13 @@ const Board = () => {
     }
   };
 
-  const addNote = async () => {
+  const handleAddNote = async (color) => {
     const defaultSize = { width: 200, height: 200 };
     const newNoteData = {
       content: 'New Note',
       position: getRandomPosition(),
       size: defaultSize,
-      backgroundColor: COLORS[Math.floor(Math.random() * COLORS.length)],
+      backgroundColor: color,
     };
 
     try {
@@ -208,12 +202,19 @@ const Board = () => {
           style={{ left: activeGridLines.vertical }}
         />
       )}
-      <button
-        onClick={addNote}
-        className="fixed bottom-6 right-6 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-colors z-50 flex items-center justify-center w-12 h-12"
-      >
-        <span className="text-2xl">+</span>
-      </button>
+      <div className="fixed bottom-6 right-6 z-50">
+        <button
+          onClick={() => setIsColorPickerOpen(!isColorPickerOpen)}
+          className="bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-colors z-50 flex items-center justify-center w-12 h-12 relative"
+        >
+          <PlusIcon className="h-6 w-6" />
+        </button>
+        <ColorPicker
+          isOpen={isColorPickerOpen}
+          onClose={() => setIsColorPickerOpen(false)}
+          onSelectColor={handleAddNote}
+        />
+      </div>
       <AnimatePresence>
         {notes.map(note => (
           <Note
