@@ -47,88 +47,98 @@ const Board = () => {
     fetchNotes();
   }, []);
 
-  const checkGridAlignment = useCallback((position, size) => {
+  const checkGridAlignment = useCallback((info, size) => {
     const gridLines = { horizontal: null, vertical: null };
-    const edges = {
-      left: position.x,
-      right: position.x + size.width,
-      top: position.y,
-      bottom: position.y + size.height
-    };
+    
+    // Use the size from the info object if available (during resize) or fallback to provided size
+    const currentSize = info.size || size;
+    const position = info.position;
+    
+    // Calculate bottom-right corner position
+    const bottomRightX = position.x + currentSize.width;
+    const bottomRightY = position.y + currentSize.height;
 
-    Object.entries(edges).forEach(([edge, value]) => {
-      const nearestGridLine = Math.round(value / GRID_SIZE) * GRID_SIZE;
-      const distance = Math.abs(value - nearestGridLine);
+    // Check horizontal alignment for bottom edge
+    const nearestHorizontalLine = Math.round(bottomRightY / GRID_SIZE) * GRID_SIZE;
+    const horizontalDistance = Math.abs(bottomRightY - nearestHorizontalLine);
 
-      if (distance < SNAP_THRESHOLD) {
-        if (edge === 'top' || edge === 'bottom') {
-          gridLines.horizontal = nearestGridLine;
-        } else {
-          gridLines.vertical = nearestGridLine;
-        }
-      }
-    });
+    // Check vertical alignment for right edge
+    const nearestVerticalLine = Math.round(bottomRightX / GRID_SIZE) * GRID_SIZE;
+    const verticalDistance = Math.abs(bottomRightX - nearestVerticalLine);
+
+    if (horizontalDistance < SNAP_THRESHOLD) {
+      gridLines.horizontal = nearestHorizontalLine;
+    }
+
+    if (verticalDistance < SNAP_THRESHOLD) {
+      gridLines.vertical = nearestVerticalLine;
+    }
+
+    // Update CSS variables for grid lines
+    if (gridLines.horizontal !== null) {
+      document.documentElement.style.setProperty('--mouse-y', `${gridLines.horizontal}px`);
+    } else {
+      document.documentElement.style.removeProperty('--mouse-y');
+    }
+
+    if (gridLines.vertical !== null) {
+      document.documentElement.style.setProperty('--mouse-x', `${gridLines.vertical}px`);
+    } else {
+      document.documentElement.style.removeProperty('--mouse-x');
+    }
 
     return gridLines;
   }, []);
-
-  const handleDragEnd = async (id, info, size) => {
-    const note = notes.find(n => n._id === id);
-    if (!note) return;
-
-    const newX = note.position.x + info.offset.x;
-    const newY = note.position.y + info.offset.y;
-
-    // Snap to grid
-    const snappedX = Math.round(newX / GRID_SIZE) * GRID_SIZE;
-    const snappedY = Math.round(newY / GRID_SIZE) * GRID_SIZE;
-
-    try {
-      await updateNote(id, {
-        position: { x: snappedX, y: snappedY },
-        size: size
-      });
-
-      setNotes(notes.map(note => 
-        note._id === id 
-          ? { ...note, position: { x: snappedX, y: snappedY }, size }
-          : note
-      ));
-    } catch (err) {
-      console.error('Error updating note position:', err);
-    }
-    
-    document.documentElement.style.removeProperty('--mouse-x');
-    document.documentElement.style.removeProperty('--mouse-y');
-    setActiveGridLines({ horizontal: null, vertical: null });
-  };
 
   const handleDrag = (id, info, size) => {
     const note = notes.find(n => n._id === id);
     if (!note) return;
 
-    const position = {
-      x: note.position.x + info.offset.x,
-      y: note.position.y + info.offset.y
-    };
-
-    const gridLines = checkGridAlignment(position, size);
-    
-    if (gridLines.horizontal !== null) {
-      document.documentElement.style.setProperty('--mouse-y', `${position.y + size.height / 2}px`);
-    }
-    if (gridLines.vertical !== null) {
-      document.documentElement.style.setProperty('--mouse-x', `${position.x + size.width / 2}px`);
-    }
-    
+    const gridLines = checkGridAlignment(info, size);
     setActiveGridLines(gridLines);
   };
 
+  const handleDragEnd = async (id, info, size) => {
+    const note = notes.find(n => n._id === id);
+    if (!note) return;
+
+    // Clean up grid lines
+    document.documentElement.style.removeProperty('--mouse-x');
+    document.documentElement.style.removeProperty('--mouse-y');
+    setActiveGridLines({ horizontal: null, vertical: null });
+
+    // Get the final position and size
+    const position = info.position;
+    const finalSize = info.size || size;
+
+    // Snap the position to grid
+    const snappedPosition = {
+      x: Math.round(position.x / GRID_SIZE) * GRID_SIZE,
+      y: Math.round(position.y / GRID_SIZE) * GRID_SIZE
+    };
+
+    try {
+      await updateNote(id, {
+        position: snappedPosition,
+        size: finalSize
+      });
+
+      setNotes(notes.map(note => 
+        note._id === id 
+          ? { ...note, position: snappedPosition, size: finalSize }
+          : note
+      ));
+    } catch (err) {
+      console.error('Error updating note position:', err);
+    }
+  };
+
   const addNote = async () => {
+    const defaultSize = { width: 200, height: 200 };
     const newNoteData = {
       content: 'New Note',
       position: getRandomPosition(),
-      size: { width: 200, height: 200 },
+      size: defaultSize,
       backgroundColor: COLORS[Math.floor(Math.random() * COLORS.length)],
     };
 

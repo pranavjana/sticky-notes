@@ -3,16 +3,33 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useState, useEffect } from 'react';
 import { Resizable } from 're-resizable';
 
-const Note = ({ id, content, position, backgroundColor, onDelete, onUpdate, onDragEnd, onDrag }) => {
+const Note = ({ id, content, position, backgroundColor, size: initialSize, onDelete, onUpdate, onDragEnd, onDrag }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [noteContent, setNoteContent] = useState(content);
-  const [size, setSize] = useState({ width: 200, height: 200 });
+  const [size, setSize] = useState(initialSize || { width: 200, height: 200 });
   const [isResizing, setIsResizing] = useState(false);
   const [localPosition, setLocalPosition] = useState({ x: 0, y: 0 });
+  const [currentSize, setCurrentSize] = useState(initialSize || { width: 200, height: 200 });
 
   useEffect(() => {
     setLocalPosition({ x: position.x, y: position.y });
   }, [position]);
+
+  useEffect(() => {
+    // Update size state when initialSize changes (e.g., after database fetch)
+    if (initialSize) {
+      setSize(initialSize);
+      setCurrentSize(initialSize);
+    }
+  }, [initialSize]);
+
+  useEffect(() => {
+    // Clean up grid lines when component unmounts
+    return () => {
+      document.documentElement.style.removeProperty('--mouse-x');
+      document.documentElement.style.removeProperty('--mouse-y');
+    };
+  }, []);
 
   const handleDoubleClick = () => {
     setIsEditing(true);
@@ -36,14 +53,54 @@ const Note = ({ id, content, position, backgroundColor, onDelete, onUpdate, onDr
         y: localPosition.y + info.offset.y
       };
       setLocalPosition(newPosition);
-      onDragEnd(id, { offset: { x: info.offset.x, y: info.offset.y } }, size);
+      onDragEnd(id, { 
+        position: newPosition,
+        size: currentSize
+      }, currentSize);
     }
   };
 
   const handleDrag = (event, info) => {
     if (!isResizing) {
-      onDrag(id, info, size);
+      const currentPosition = {
+        x: localPosition.x + info.offset.x,
+        y: localPosition.y + info.offset.y
+      };
+      onDrag(id, { 
+        position: currentPosition,
+        size: currentSize
+      }, currentSize);
     }
+  };
+
+  const handleResize = (e, direction, ref, d) => {
+    const newSize = {
+      width: size.width + d.width,
+      height: size.height + d.height,
+    };
+    setCurrentSize(newSize);
+    
+    // During resize, send current position and current size
+    onDrag(id, { 
+      position: localPosition,
+      size: newSize
+    }, newSize);
+  };
+
+  const handleResizeStop = (e, direction, ref, d) => {
+    const finalSize = {
+      width: size.width + d.width,
+      height: size.height + d.height,
+    };
+    setSize(finalSize);
+    setCurrentSize(finalSize);
+    setIsResizing(false);
+    
+    // Send final position and size
+    onDragEnd(id, { 
+      position: localPosition,
+      size: finalSize
+    }, finalSize);
   };
 
   // Convert hex to rgba for gradient
@@ -78,24 +135,17 @@ const Note = ({ id, content, position, backgroundColor, onDelete, onUpdate, onDr
       animate={{ x: localPosition.x, y: localPosition.y }}
       style={{ 
         position: 'absolute',
-        width: size.width,
-        height: size.height,
+        width: currentSize.width,
+        height: currentSize.height,
         left: 0,
         top: 0
       }}
     >
       <Resizable
-        size={size}
+        size={currentSize}
         onResizeStart={() => setIsResizing(true)}
-        onResize={(e, direction, ref, d) => {
-          setSize({
-            width: size.width + d.width,
-            height: size.height + d.height,
-          });
-        }}
-        onResizeStop={() => {
-          setIsResizing(false);
-        }}
+        onResize={handleResize}
+        onResizeStop={handleResizeStop}
         minWidth={150}
         minHeight={150}
         maxWidth={400}

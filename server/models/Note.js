@@ -22,12 +22,16 @@ const noteSchema = new mongoose.Schema({
     width: {
       type: Number,
       required: true,
-      default: 200 // default width in pixels
+      default: 200,
+      min: 150,  // Minimum size
+      max: 400   // Maximum size
     },
     height: {
       type: Number,
       required: true,
-      default: 200 // default height in pixels
+      default: 200,
+      min: 150,  // Minimum size
+      max: 400   // Maximum size
     }
   },
   userId: {
@@ -54,6 +58,13 @@ const noteSchema = new mongoose.Schema({
 
 noteSchema.pre('save', function(next) {
   this.updatedAt = Date.now();
+  
+  // Ensure size stays within bounds
+  if (this.size) {
+    this.size.width = Math.max(150, Math.min(400, this.size.width));
+    this.size.height = Math.max(150, Math.min(400, this.size.height));
+  }
+  
   next();
 });
 
