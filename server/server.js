@@ -14,6 +14,15 @@ dotenv.config();
 
 const app = express();
 
+// Verify environment variables
+if (!process.env.CLERK_SECRET_KEY) {
+  throw new Error('Missing CLERK_SECRET_KEY. Set it in your .env file');
+}
+
+if (!process.env.MONGODB_URI) {
+  throw new Error('Missing MONGODB_URI. Set it in your .env file');
+}
+
 // Connect to MongoDB
 const connectDB = async () => {
   try {
@@ -39,7 +48,11 @@ app.use(express.json());
 
 // Auth middleware
 const requireAuth = ClerkExpressRequireAuth({
-  secretKey: process.env.CLERK_SECRET_KEY
+  secretKey: process.env.CLERK_SECRET_KEY,
+  onError: (err, req, res) => {
+    console.error('Clerk Auth Error:', err);
+    res.status(401).json({ error: 'Unauthorized' });
+  }
 });
 
 // Routes

@@ -8,7 +8,7 @@ import { PlusIcon } from '@heroicons/react/24/outline';
 
 const GRID_SIZE = 40;
 const SNAP_THRESHOLD = 15;
-const ZOOM_SPEED = 0.1;
+const ZOOM_SPEED = 0.03;
 
 const Board = () => {
   const [notes, setNotes] = useState([]);
@@ -41,41 +41,34 @@ const Board = () => {
     const board = boardRef.current;
     if (!board) return;
 
-    const preventDefaultWheel = (e) => {
+    const handleWheelEvent = (e) => {
+      e.preventDefault(); // Prevent any default scrolling
+      
       if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
+        const direction = e.deltaY > 0 ? -1 : 1;
+        const factor = ZOOM_SPEED * direction;
+        
+        setTransform(prev => {
+          const newScale = Math.max(0.1, Math.min(5, prev.scale * (1 + factor)));
+          
+          // Calculate how much the content will change in size
+          const dx = (e.clientX - prev.x) * (1 - newScale / prev.scale);
+          const dy = (e.clientY - prev.y) * (1 - newScale / prev.scale);
+          
+          return {
+            scale: newScale,
+            x: prev.x + dx,
+            y: prev.y + dy
+          };
+        });
       }
     };
 
-    board.addEventListener('wheel', preventDefaultWheel, { passive: false });
+    board.addEventListener('wheel', handleWheelEvent, { passive: false });
     return () => {
-      board.removeEventListener('wheel', preventDefaultWheel);
+      board.removeEventListener('wheel', handleWheelEvent);
     };
-  }, []);
-
-  const handleWheel = useCallback((e) => {
-    if (e.ctrlKey || e.metaKey) {
-      const direction = e.deltaY > 0 ? -1 : 1;
-      const factor = ZOOM_SPEED * direction;
-      
-      setTransform(prev => {
-        const newScale = Math.max(0.1, Math.min(5, prev.scale * (1 + factor)));
-        const scaleDiff = newScale - prev.scale;
-        
-        return {
-          scale: newScale,
-          x: prev.x - (e.clientX - prev.x) * (scaleDiff / prev.scale),
-          y: prev.y - (e.clientY - prev.y) * (scaleDiff / prev.scale)
-        };
-      });
-    } else {
-      setTransform(prev => ({
-        ...prev,
-        x: prev.x - e.deltaX,
-        y: prev.y - e.deltaY
-      }));
-    }
-  }, []);
+  }, [transform]);
 
   const startDragging = useCallback((e) => {
     if (e.button === 1 || (e.button === 0 && e.altKey)) {
@@ -91,39 +84,50 @@ const Board = () => {
   const handleDrag = useCallback((e) => {
     if (!isDragging) return;
     
+    const newX = e.clientX - dragStart.x;
+    const newY = e.clientY - dragStart.y;
+    
     setTransform(prev => ({
       ...prev,
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y
+      x: newX,
+      y: newY
     }));
   }, [isDragging, dragStart]);
 
   const screenToWorld = useCallback((screenX, screenY) => {
-    return {
-      x: screenX / transform.scale,
-      y: screenY / transform.scale
-    };
+    // Convert screen coordinates to world coordinates
+    const x = (screenX - transform.x) / transform.scale;
+    const y = (screenY - transform.y) / transform.scale;
+    return { x, y };
   }, [transform]);
 
   const worldToScreen = useCallback((worldX, worldY) => {
     return {
-      x: worldX * transform.scale,
-      y: worldY * transform.scale
+      x: worldX * transform.scale + transform.x,
+      y: worldY * transform.scale + transform.y
     };
   }, [transform]);
 
   const handleAddNote = async (color) => {
-    const worldPos = screenToWorld(
-      window.innerWidth / 2,
-      window.innerHeight / 2
-    );
+    // Get the viewport center in screen coordinates
+    const viewportCenterX = window.innerWidth / 2;
+    const viewportCenterY = window.innerHeight / 2;
+    
+    // Convert to world coordinates taking into account current transform
+    const worldPos = {
+      x: (viewportCenterX - transform.x) / transform.scale,
+      y: (viewportCenterY - transform.y) / transform.scale
+    };
+    
+    // Snap to grid
+    const snappedPos = {
+      x: Math.round(worldPos.x / GRID_SIZE) * GRID_SIZE,
+      y: Math.round(worldPos.y / GRID_SIZE) * GRID_SIZE
+    };
     
     const newNoteData = {
       content: 'New Note',
-      position: {
-        x: Math.round(worldPos.x / GRID_SIZE) * GRID_SIZE,
-        y: Math.round(worldPos.y / GRID_SIZE) * GRID_SIZE
-      },
+      position: snappedPos,
       size: { width: 200, height: 200 },
       backgroundColor: color,
     };
@@ -210,7 +214,6 @@ const Board = () => {
     <div 
       ref={boardRef}
       className="fixed inset-0 overflow-hidden bg-neutral-900 board-container"
-      onWheel={handleWheel}
       onMouseDown={startDragging}
       onMouseUp={stopDragging}
       onMouseLeave={stopDragging}
@@ -233,8 +236,11 @@ const Board = () => {
       </div>
 
       <div
+        className="notes-container"
         style={{
-          transform: `scale(${transform.scale})`,
+          position: 'absolute',
+          inset: 0,
+          transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
           transformOrigin: '0 0'
         }}
       >
@@ -253,7 +259,6 @@ const Board = () => {
               onUpdateSize={updateNoteSize}
               transform={transform}
               screenToWorld={screenToWorld}
-              worldToScreen={worldToScreen}
             />
           ))}
         </AnimatePresence>

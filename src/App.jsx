@@ -17,6 +17,19 @@ function App() {
     setIsEditing(false);
   };
 
+  const handleForceSignOut = async () => {
+    try {
+      // Force sign out from all sessions
+      await signOut();
+      // Optionally, you can also clear any local storage or cookies here
+      localStorage.clear();
+      // Reload the page to ensure a clean state
+      window.location.reload();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   if (!isLoaded) {
     return (
       <div className="min-h-screen bg-neutral-900 flex items-center justify-center">
@@ -33,6 +46,12 @@ function App() {
         <div className="min-h-screen bg-neutral-900 flex items-center justify-center">
           <div className="w-full max-w-md px-4">
             <SignIn />
+            <button
+              onClick={handleForceSignOut}
+              className="mt-4 w-full p-2 text-red-400 hover:text-red-300 transition-colors text-sm"
+            >
+              Force Sign Out of All Sessions
+            </button>
           </div>
         </div>
       </SignedOut>
@@ -68,9 +87,9 @@ function App() {
                     {userEmail}
                   </span>
                   <button
-                    onClick={() => signOut()}
+                    onClick={handleForceSignOut}
                     className="p-2 text-red-400/70 hover:text-red-400 transition-colors rounded-full hover:bg-neutral-700/50"
-                    title="Sign out"
+                    title="Force Sign Out"
                   >
                     <ArrowRightOnRectangleIcon className="h-5 w-5" />
                   </button>

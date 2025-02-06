@@ -4,11 +4,12 @@ import { ClerkProvider } from '@clerk/clerk-react'
 import App from './App.jsx'
 import './index.css'
 
-if (!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY) {
-  throw new Error("Missing Publishable Key")
-}
+// Make sure we're using the correct environment variable
+const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
-const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+if (!publishableKey) {
+  throw new Error("Missing Clerk Publishable Key. Set VITE_CLERK_PUBLISHABLE_KEY in your .env.local file");
+}
 
 const appearance = {
   layout: {
@@ -49,7 +50,7 @@ const appearance = {
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ClerkProvider
-      publishableKey={clerkPubKey}
+      publishableKey={publishableKey}
       appearance={appearance}
     >
       <App />

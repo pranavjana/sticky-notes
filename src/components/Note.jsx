@@ -31,7 +31,7 @@ const Note = ({
   }, [initialSize]);
 
   const handleDragEnd = (event, info) => {
-    // info.point is already in screen coordinates
+    // Convert the final screen position to world coordinates
     const finalWorldPos = screenToWorld(info.point.x, info.point.y);
     
     // Snap to grid
@@ -111,8 +111,8 @@ const Note = ({
         height: size.height,
         cursor: isEditing ? 'text' : 'move',
         touchAction: 'none',
-        x: position.x + transform.x,
-        y: position.y + transform.y
+        x: position.x,
+        y: position.y
       }}
     >
       <Resizable
