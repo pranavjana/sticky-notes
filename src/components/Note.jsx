@@ -3,7 +3,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useState, useEffect } from 'react';
 import { Resizable } from 're-resizable';
 
-const Note = ({ id, content, position, color, onDelete, onUpdate, onDragEnd, onDrag }) => {
+const Note = ({ id, content, position, backgroundColor, onDelete, onUpdate, onDragEnd, onDrag }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [noteContent, setNoteContent] = useState(content);
   const [size, setSize] = useState({ width: 200, height: 200 });
@@ -16,7 +16,7 @@ const Note = ({ id, content, position, color, onDelete, onUpdate, onDragEnd, onD
 
   const handleDoubleClick = () => {
     setIsEditing(true);
-    if (noteContent === 'Note...') {
+    if (noteContent === 'New Note') {
       setNoteContent('');
     }
   };
@@ -24,7 +24,7 @@ const Note = ({ id, content, position, color, onDelete, onUpdate, onDragEnd, onD
   const handleBlur = () => {
     setIsEditing(false);
     if (!noteContent.trim()) {
-      setNoteContent('Note...');
+      setNoteContent('New Note');
     }
     onUpdate(id, noteContent);
   };
@@ -36,7 +36,7 @@ const Note = ({ id, content, position, color, onDelete, onUpdate, onDragEnd, onD
         y: localPosition.y + info.offset.y
       };
       setLocalPosition(newPosition);
-      onDragEnd(id, { offset: { x: info.offset.x, y: info.offset.y } });
+      onDragEnd(id, { offset: { x: info.offset.x, y: info.offset.y } }, size);
     }
   };
 
@@ -45,6 +45,28 @@ const Note = ({ id, content, position, color, onDelete, onUpdate, onDragEnd, onD
       onDrag(id, info, size);
     }
   };
+
+  // Convert hex to rgba for gradient
+  const getGradientColors = (hexColor) => {
+    // Default to a light yellow if no color is provided
+    const defaultColor = '#fef3c7';
+    const color = hexColor || defaultColor;
+    
+    // Function to convert hex to rgba
+    const hexToRgba = (hex, alpha = 1) => {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+
+    return {
+      start: color,
+      end: hexToRgba(color, 0.8)
+    };
+  };
+
+  const colors = getGradientColors(backgroundColor);
 
   return (
     <motion.div
@@ -99,7 +121,16 @@ const Note = ({ id, content, position, color, onDelete, onUpdate, onDragEnd, onD
           bottomRight: { bottom: -6, right: -6 }
         }}
       >
-        <div className={`note ${isResizing ? 'resizing' : ''}`} style={{ width: '100%', height: '100%', background: `linear-gradient(135deg, ${color} 0%, ${color.replace(')', ', 0.8)').replace('rgb', 'rgba')} 100%)` }}>
+        <div 
+          className={`note ${isResizing ? 'resizing' : ''}`} 
+          style={{ 
+            width: '100%', 
+            height: '100%', 
+            background: `linear-gradient(135deg, ${colors.start} 0%, ${colors.end} 100%)`,
+            borderRadius: '8px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+          }}
+        >
           <div className="w-full h-full select-none relative">
             <div className="resize-frame">
               <div className="resize-corner resize-corner-tl"></div>

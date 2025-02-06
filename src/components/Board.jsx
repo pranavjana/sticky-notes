@@ -1,15 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
-import { nanoid } from 'nanoid';
 import Note from './Note';
 import { AnimatePresence } from 'framer-motion';
+import { getNotes, createNote, updateNote, deleteNote, batchUpdateNotes } from '../services/noteService';
 
 const COLORS = [
-  'rgb(255, 242, 179)', // yellow
-  'rgb(255, 204, 204)', // pink
-  'rgb(204, 255, 204)', // green
-  'rgb(204, 229, 255)', // blue
-  'rgb(255, 204, 255)', // purple
-  'rgb(255, 218, 179)', // orange
+  '#fef3c7', // yellow
+  '#fee2e2', // pink
+  '#dcfce7', // green
+  '#dbeafe', // blue
+  '#f5d0fe', // purple
+  '#ffedd5', // orange
 ];
 
 const GRID_SIZE = 40;
@@ -26,15 +26,26 @@ const getRandomPosition = () => {
 };
 
 const Board = () => {
-  const [notes, setNotes] = useState(() => {
-    const savedNotes = localStorage.getItem('sticky-notes');
-    return savedNotes ? JSON.parse(savedNotes) : [];
-  });
+  const [notes, setNotes] = useState([]);
   const [activeGridLines, setActiveGridLines] = useState({ horizontal: null, vertical: null });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
+  // Fetch notes from MongoDB when component mounts
   useEffect(() => {
-    localStorage.setItem('sticky-notes', JSON.stringify(notes));
-  }, [notes]);
+    const fetchNotes = async () => {
+      try {
+        const fetchedNotes = await getNotes();
+        setNotes(fetchedNotes);
+      } catch (err) {
+        setError('Failed to load notes');
+        console.error('Error fetching notes:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchNotes();
+  }, []);
 
   const checkGridAlignment = useCallback((position, size) => {
     const gridLines = { horizontal: null, vertical: null };
@@ -45,7 +56,6 @@ const Board = () => {
       bottom: position.y + size.height
     };
 
-    // Check horizontal alignment
     Object.entries(edges).forEach(([edge, value]) => {
       const nearestGridLine = Math.round(value / GRID_SIZE) * GRID_SIZE;
       const distance = Math.abs(value - nearestGridLine);
@@ -62,31 +72,39 @@ const Board = () => {
     return gridLines;
   }, []);
 
-  const handleDragEnd = (id, info) => {
-    setNotes(notes.map(note => {
-      if (note.id !== id) return note;
+  const handleDragEnd = async (id, info, size) => {
+    const note = notes.find(n => n._id === id);
+    if (!note) return;
 
-      const newX = note.position.x + info.offset.x;
-      const newY = note.position.y + info.offset.y;
+    const newX = note.position.x + info.offset.x;
+    const newY = note.position.y + info.offset.y;
 
-      // Snap to grid
-      const snappedX = Math.round(newX / GRID_SIZE) * GRID_SIZE;
-      const snappedY = Math.round(newY / GRID_SIZE) * GRID_SIZE;
+    // Snap to grid
+    const snappedX = Math.round(newX / GRID_SIZE) * GRID_SIZE;
+    const snappedY = Math.round(newY / GRID_SIZE) * GRID_SIZE;
 
-      return {
-        ...note,
-        position: { x: snappedX, y: snappedY }
-      };
-    }));
+    try {
+      await updateNote(id, {
+        position: { x: snappedX, y: snappedY },
+        size: size
+      });
+
+      setNotes(notes.map(note => 
+        note._id === id 
+          ? { ...note, position: { x: snappedX, y: snappedY }, size }
+          : note
+      ));
+    } catch (err) {
+      console.error('Error updating note position:', err);
+    }
     
-    // Clean up CSS variables
     document.documentElement.style.removeProperty('--mouse-x');
     document.documentElement.style.removeProperty('--mouse-y');
     setActiveGridLines({ horizontal: null, vertical: null });
   };
 
   const handleDrag = (id, info, size) => {
-    const note = notes.find(n => n.id === id);
+    const note = notes.find(n => n._id === id);
     if (!note) return;
 
     const position = {
@@ -96,7 +114,6 @@ const Board = () => {
 
     const gridLines = checkGridAlignment(position, size);
     
-    // Update CSS variables for the glow position
     if (gridLines.horizontal !== null) {
       document.documentElement.style.setProperty('--mouse-y', `${position.y + size.height / 2}px`);
     }
@@ -107,25 +124,57 @@ const Board = () => {
     setActiveGridLines(gridLines);
   };
 
-  const addNote = () => {
-    const newNote = {
-      id: nanoid(),
-      content: 'Note...',
+  const addNote = async () => {
+    const newNoteData = {
+      content: 'New Note',
       position: getRandomPosition(),
-      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      size: { width: 200, height: 200 },
+      backgroundColor: COLORS[Math.floor(Math.random() * COLORS.length)],
     };
-    setNotes([...notes, newNote]);
+
+    try {
+      const createdNote = await createNote(newNoteData);
+      setNotes([...notes, createdNote]);
+    } catch (err) {
+      console.error('Error creating note:', err);
+    }
   };
 
-  const updateNote = (id, content) => {
-    setNotes(notes.map(note => 
-      note.id === id ? { ...note, content: content.trim() || 'Note...' } : note
-    ));
+  const updateNoteContent = async (id, content) => {
+    try {
+      await updateNote(id, { content: content.trim() || 'New Note' });
+      setNotes(notes.map(note => 
+        note._id === id ? { ...note, content: content.trim() || 'New Note' } : note
+      ));
+    } catch (err) {
+      console.error('Error updating note content:', err);
+    }
   };
 
-  const deleteNote = (id) => {
-    setNotes(notes.filter(note => note.id !== id));
+  const handleDeleteNote = async (id) => {
+    try {
+      await deleteNote(id);
+      setNotes(notes.filter(note => note._id !== id));
+    } catch (err) {
+      console.error('Error deleting note:', err);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-neutral-900">
+        <div className="text-neutral-100 text-xl">Loading notes...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-neutral-900">
+        <div className="text-red-500 text-xl">{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-neutral-900">
@@ -158,10 +207,14 @@ const Board = () => {
       <AnimatePresence>
         {notes.map(note => (
           <Note
-            key={note.id}
-            {...note}
-            onDelete={deleteNote}
-            onUpdate={updateNote}
+            key={note._id}
+            id={note._id}
+            content={note.content}
+            position={note.position}
+            size={note.size}
+            backgroundColor={note.backgroundColor}
+            onDelete={handleDeleteNote}
+            onUpdate={updateNoteContent}
             onDragEnd={handleDragEnd}
             onDrag={handleDrag}
           />
