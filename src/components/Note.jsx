@@ -3,33 +3,45 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useState, useEffect } from 'react';
 import { Resizable } from 're-resizable';
 
-const Note = ({ id, content, position, backgroundColor, size: initialSize, onDelete, onUpdate, onDragEnd, onDrag }) => {
+const Note = ({ 
+  id, 
+  content, 
+  position,
+  backgroundColor,
+  size: initialSize,
+  onDelete,
+  onUpdate,
+  onUpdatePosition,
+  onUpdateSize,
+  transform,
+  screenToWorld,
+  worldToScreen
+}) => {
   const [isEditing, setIsEditing] = useState(false);
   const [noteContent, setNoteContent] = useState(content);
   const [size, setSize] = useState(initialSize || { width: 200, height: 200 });
   const [isResizing, setIsResizing] = useState(false);
-  const [localPosition, setLocalPosition] = useState({ x: 0, y: 0 });
-  const [currentSize, setCurrentSize] = useState(initialSize || { width: 200, height: 200 });
 
   useEffect(() => {
-    setLocalPosition({ x: position.x, y: position.y });
-  }, [position]);
+    setNoteContent(content);
+  }, [content]);
 
   useEffect(() => {
-    // Update size state when initialSize changes (e.g., after database fetch)
-    if (initialSize) {
-      setSize(initialSize);
-      setCurrentSize(initialSize);
-    }
+    setSize(initialSize || { width: 200, height: 200 });
   }, [initialSize]);
 
-  useEffect(() => {
-    // Clean up grid lines when component unmounts
-    return () => {
-      document.documentElement.style.removeProperty('--mouse-x');
-      document.documentElement.style.removeProperty('--mouse-y');
+  const handleDragEnd = (event, info) => {
+    // info.point is already in screen coordinates
+    const finalWorldPos = screenToWorld(info.point.x, info.point.y);
+    
+    // Snap to grid
+    const snappedPos = {
+      x: Math.round(finalWorldPos.x / 40) * 40,
+      y: Math.round(finalWorldPos.y / 40) * 40
     };
-  }, []);
+
+    onUpdatePosition(id, snappedPos);
+  };
 
   const handleDoubleClick = () => {
     setIsEditing(true);
@@ -46,61 +58,22 @@ const Note = ({ id, content, position, backgroundColor, size: initialSize, onDel
     onUpdate(id, noteContent);
   };
 
-  const handleDragEnd = (event, info) => {
-    if (!isResizing) {
-      const newPosition = {
-        x: localPosition.x + info.offset.x,
-        y: localPosition.y + info.offset.y
-      };
-      setLocalPosition(newPosition);
-      onDragEnd(id, { 
-        position: newPosition,
-        size: currentSize
-      }, currentSize);
-    }
-  };
-
-  const handleDrag = (event, info) => {
-    if (!isResizing) {
-      const currentPosition = {
-        x: localPosition.x + info.offset.x,
-        y: localPosition.y + info.offset.y
-      };
-      onDrag(id, { 
-        position: currentPosition,
-        size: currentSize
-      }, currentSize);
-    }
-  };
-
   const handleResize = (e, direction, ref, d) => {
     const newSize = {
-      width: size.width + d.width,
-      height: size.height + d.height,
+      width: initialSize.width + d.width,
+      height: initialSize.height + d.height,
     };
-    setCurrentSize(newSize);
-    
-    // During resize, send current position and current size
-    onDrag(id, { 
-      position: localPosition,
-      size: newSize
-    }, newSize);
+    setSize(newSize);
   };
 
   const handleResizeStop = (e, direction, ref, d) => {
     const finalSize = {
-      width: size.width + d.width,
-      height: size.height + d.height,
+      width: initialSize.width + d.width,
+      height: initialSize.height + d.height,
     };
     setSize(finalSize);
-    setCurrentSize(finalSize);
     setIsResizing(false);
-    
-    // Send final position and size
-    onDragEnd(id, { 
-      position: localPosition,
-      size: finalSize
-    }, finalSize);
+    onUpdateSize(id, finalSize);
   };
 
   // Convert hex to rgba for gradient
@@ -129,20 +102,21 @@ const Note = ({ id, content, position, backgroundColor, size: initialSize, onDel
     <motion.div
       drag={!isEditing && !isResizing}
       dragMomentum={false}
-      onDrag={handleDrag}
+      dragElastic={0}
       onDragEnd={handleDragEnd}
-      initial={{ x: position.x, y: position.y }}
-      animate={{ x: localPosition.x, y: localPosition.y }}
+      initial={false}
       style={{ 
         position: 'absolute',
-        width: currentSize.width,
-        height: currentSize.height,
-        left: 0,
-        top: 0
+        width: size.width,
+        height: size.height,
+        cursor: isEditing ? 'text' : 'move',
+        touchAction: 'none',
+        x: position.x + transform.x,
+        y: position.y + transform.y
       }}
     >
       <Resizable
-        size={currentSize}
+        size={size}
         onResizeStart={() => setIsResizing(true)}
         onResize={handleResize}
         onResizeStop={handleResizeStop}
