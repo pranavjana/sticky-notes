@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_URL = 'http://localhost:3001/api';
 
 const getAuthHeaders = async () => {
   try {
@@ -55,7 +55,7 @@ export const updateNote = async (id, noteData) => {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch(`${API_URL}/notes/${id}`, {
-      method: 'PUT',
+      method: 'PATCH',
       headers,
       credentials: 'include',
       body: JSON.stringify(noteData),
