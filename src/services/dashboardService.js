@@ -1,12 +1,24 @@
-const API_URL = 'http://localhost:3001/api';
+const API_URL = import.meta.env.VITE_API_URL;
+
+const getAuthHeaders = async () => {
+  try {
+    const token = await window.Clerk?.session?.getToken();
+    return {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    };
+  } catch (error) {
+    console.error('Error getting auth token:', error);
+    throw new Error('Authentication failed');
+  }
+};
 
 export const getDashboardSettings = async () => {
   try {
+    const headers = await getAuthHeaders();
     const response = await fetch(`${API_URL}/dashboard`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers,
       credentials: 'include'
     });
     
@@ -23,11 +35,10 @@ export const getDashboardSettings = async () => {
 
 export const updateDashboardTitle = async (title) => {
   try {
+    const headers = await getAuthHeaders();
     const response = await fetch(`${API_URL}/dashboard`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers,
       credentials: 'include',
       body: JSON.stringify({ title })
     });

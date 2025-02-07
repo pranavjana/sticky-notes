@@ -36,9 +36,12 @@ const connectDB = async () => {
 
 connectDB();
 
+// Get allowed origins from environment variable
+const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',');
+
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
