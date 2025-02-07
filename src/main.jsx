@@ -18,7 +18,7 @@ const appearance = {
     termsPageUrl: "https://clerk.com/terms"
   },
   variables: {
-    colorPrimary: '#ef4444',
+    colorPrimary: '#8b5cf6',
     colorBackground: '#171717',
     colorText: '#ffffff',
     colorInputText: '#ffffff',
@@ -29,15 +29,15 @@ const appearance = {
   elements: {
     rootBox: "mx-auto",
     card: "bg-neutral-800 border border-neutral-700 shadow-xl",
-    formButtonPrimary: "bg-red-600 hover:bg-red-700 text-white",
+    formButtonPrimary: "bg-purple-600 hover:bg-purple-700 text-white",
     formFieldInput: "bg-neutral-700 border-neutral-600",
-    footerActionLink: "text-red-500 hover:text-red-400",
+    footerActionLink: "text-purple-500 hover:text-purple-400",
     formFieldLabel: "text-neutral-300",
     dividerLine: "bg-neutral-700",
     dividerText: "text-neutral-400",
     formFieldHintText: "text-neutral-400",
     identityPreviewText: "text-neutral-300",
-    identityPreviewEditButton: "text-red-500 hover:text-red-400",
+    identityPreviewEditButton: "text-purple-500 hover:text-purple-400",
     headerTitle: "text-neutral-100",
     headerSubtitle: "text-neutral-400",
     socialButtonsBlockButton: "border-neutral-700 bg-neutral-800 hover:bg-neutral-700",

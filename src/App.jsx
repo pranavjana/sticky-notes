@@ -1,7 +1,9 @@
-import { useState } from 'react';
-import { SignIn, SignedIn, SignedOut, useUser, useClerk } from '@clerk/clerk-react';
+import { useState, useEffect } from 'react';
+import { SignedIn, SignedOut, useUser, useClerk } from '@clerk/clerk-react';
 import Board from './components/Board';
+import LandingPage from './components/LandingPage';
 import { PencilIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
+import { getDashboardSettings, updateDashboardTitle } from './services/dashboardService';
 
 function App() {
   const [title, setTitle] = useState('Sticky Notes Dashboard');
@@ -9,21 +11,47 @@ function App() {
   const { isLoaded, user } = useUser();
   const { signOut } = useClerk();
 
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const settings = await getDashboardSettings();
+        setTitle(settings.title);
+      } catch (error) {
+        console.error('Error fetching dashboard settings:', error);
+      }
+    };
+
+    if (user) {
+      fetchSettings();
+    }
+  }, [user]);
+
   const handleTitleChange = (e) => {
     setTitle(e.target.value);
   };
 
-  const handleTitleSubmit = () => {
+  const handleTitleSubmit = async () => {
     setIsEditing(false);
+    try {
+      await updateDashboardTitle(title);
+    } catch (error) {
+      console.error('Error updating dashboard title:', error);
+    }
+  };
+
+  const handleTitleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleTitleSubmit();
+    } else if (e.key === 'Escape') {
+      setIsEditing(false);
+      // Fetch the current title from the server
+      getDashboardSettings().then(settings => setTitle(settings.title));
+    }
   };
 
   const handleForceSignOut = async () => {
     try {
-      // Force sign out from all sessions
       await signOut();
-      // Optionally, you can also clear any local storage or cookies here
-      localStorage.clear();
-      // Reload the page to ensure a clean state
       window.location.reload();
     } catch (error) {
       console.error('Error signing out:', error);
@@ -38,22 +66,10 @@ function App() {
     );
   }
 
-  const userEmail = user?.emailAddresses?.[0]?.emailAddress || 'No email';
-
   return (
     <>
       <SignedOut>
-        <div className="min-h-screen bg-neutral-900 flex items-center justify-center">
-          <div className="w-full max-w-md px-4">
-            <SignIn />
-            <button
-              onClick={handleForceSignOut}
-              className="mt-4 w-full p-2 text-red-400 hover:text-red-300 transition-colors text-sm"
-            >
-              Force Sign Out of All Sessions
-            </button>
-          </div>
-        </div>
+        <LandingPage />
       </SignedOut>
 
       <SignedIn>
@@ -68,7 +84,7 @@ function App() {
                       value={title}
                       onChange={handleTitleChange}
                       onBlur={handleTitleSubmit}
-                      onKeyDown={(e) => e.key === 'Enter' && handleTitleSubmit()}
+                      onKeyDown={handleTitleKeyDown}
                       autoFocus
                       className="text-xl font-bold text-neutral-100 bg-neutral-700 px-2 py-1 rounded outline-none w-auto"
                     />
@@ -84,7 +100,7 @@ function App() {
                 </div>
                 <div className="flex items-center gap-4">
                   <span className="text-neutral-400 text-sm">
-                    {userEmail}
+                    {user?.emailAddresses?.[0]?.emailAddress || 'No email'}
                   </span>
                   <button
                     onClick={handleForceSignOut}

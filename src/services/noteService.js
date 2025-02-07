@@ -60,11 +60,20 @@ export const updateNote = async (id, noteData) => {
       credentials: 'include',
       body: JSON.stringify(noteData),
     });
+
     if (!response.ok) {
       const error = await response.json();
+      console.error('Server error response:', error);
       throw new Error(error.message || 'Failed to update note');
     }
-    return response.json();
+
+    const updatedNote = await response.json();
+    if (!updatedNote) {
+      console.error('No response data from server');
+      throw new Error('No response data from server');
+    }
+
+    return updatedNote;
   } catch (error) {
     console.error('Error in updateNote:', error);
     throw error;

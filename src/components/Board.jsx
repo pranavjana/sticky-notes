@@ -1,185 +1,104 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Note from './Note';
 import ColorPicker from './ColorPicker';
-import Canvas from './Canvas';
-import { AnimatePresence } from 'framer-motion';
 import { getNotes, createNote, updateNote, deleteNote } from '../services/noteService';
 import { PlusIcon } from '@heroicons/react/24/outline';
 
-const GRID_SIZE = 40;
-const SNAP_THRESHOLD = 15;
-const ZOOM_SPEED = 0.03;
-
 const Board = () => {
   const [notes, setNotes] = useState([]);
-  const [activeGridLines, setActiveGridLines] = useState({ horizontal: null, vertical: null });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
-  const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-  const boardRef = useRef(null);
-
+  // Fetch notes when component mounts
   useEffect(() => {
     const fetchNotes = async () => {
       try {
         const fetchedNotes = await getNotes();
         setNotes(fetchedNotes);
+        setIsLoading(false);
       } catch (err) {
-        setError('Failed to load notes');
         console.error('Error fetching notes:', err);
-      } finally {
+        setError(err.message);
         setIsLoading(false);
       }
     };
+
     fetchNotes();
   }, []);
 
-  useEffect(() => {
-    const board = boardRef.current;
-    if (!board) return;
-
-    const handleWheelEvent = (e) => {
-      e.preventDefault(); // Prevent any default scrolling
-      
-      if (e.ctrlKey || e.metaKey) {
-        const direction = e.deltaY > 0 ? -1 : 1;
-        const factor = ZOOM_SPEED * direction;
-        
-        setTransform(prev => {
-          const newScale = Math.max(0.1, Math.min(5, prev.scale * (1 + factor)));
-          
-          // Calculate how much the content will change in size
-          const dx = (e.clientX - prev.x) * (1 - newScale / prev.scale);
-          const dy = (e.clientY - prev.y) * (1 - newScale / prev.scale);
-          
-          return {
-            scale: newScale,
-            x: prev.x + dx,
-            y: prev.y + dy
-          };
-        });
-      }
-    };
-
-    board.addEventListener('wheel', handleWheelEvent, { passive: false });
-    return () => {
-      board.removeEventListener('wheel', handleWheelEvent);
-    };
-  }, [transform]);
-
-  const startDragging = useCallback((e) => {
-    if (e.button === 1 || (e.button === 0 && e.altKey)) {
-      setIsDragging(true);
-      setDragStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
-    }
-  }, [transform]);
-
-  const stopDragging = useCallback(() => {
-    setIsDragging(false);
-  }, []);
-
-  const handleDrag = useCallback((e) => {
-    if (!isDragging) return;
-    
-    const newX = e.clientX - dragStart.x;
-    const newY = e.clientY - dragStart.y;
-    
-    setTransform(prev => ({
-      ...prev,
-      x: newX,
-      y: newY
-    }));
-  }, [isDragging, dragStart]);
-
-  const screenToWorld = useCallback((screenX, screenY) => {
-    // Convert screen coordinates to world coordinates
-    const x = (screenX - transform.x) / transform.scale;
-    const y = (screenY - transform.y) / transform.scale;
-    return { x, y };
-  }, [transform]);
-
-  const worldToScreen = useCallback((worldX, worldY) => {
-    return {
-      x: worldX * transform.scale + transform.x,
-      y: worldY * transform.scale + transform.y
-    };
-  }, [transform]);
-
   const handleAddNote = async (color) => {
-    // Get the viewport center in screen coordinates
-    const viewportCenterX = window.innerWidth / 2;
-    const viewportCenterY = window.innerHeight / 2;
-    
-    // Convert to world coordinates taking into account current transform
-    const worldPos = {
-      x: (viewportCenterX - transform.x) / transform.scale,
-      y: (viewportCenterY - transform.y) / transform.scale
-    };
-    
-    // Snap to grid
-    const snappedPos = {
-      x: Math.round(worldPos.x / GRID_SIZE) * GRID_SIZE,
-      y: Math.round(worldPos.y / GRID_SIZE) * GRID_SIZE
-    };
-    
     const newNoteData = {
       content: 'New Note',
-      position: snappedPos,
-      size: { width: 200, height: 200 },
+      title: '',
+      emoji: '📝',
+      position: {
+        x: window.innerWidth / 2 - 150,
+        y: window.innerHeight / 2 - 150
+      },
+      size: {
+        width: 300,
+        height: 300
+      },
       backgroundColor: color,
+      zIndex: 0
     };
 
     try {
       const createdNote = await createNote(newNoteData);
-      setNotes([...notes, createdNote]);
+      setNotes(prevNotes => [...prevNotes, createdNote]);
     } catch (err) {
       console.error('Error creating note:', err);
     }
   };
 
-  const updateNoteContent = async (id, content) => {
-    if (typeof content !== 'string') return; // Guard against non-string content
-    
+  const updateNoteContent = async (id, updates) => {
     try {
-      await updateNote(id, { content: content.trim() || 'New Note' });
-      setNotes(notes.map(note => 
-        note._id === id ? { ...note, content: content.trim() || 'New Note' } : note
-      ));
+      console.log('Sending update to server:', updates);
+      const updatedNote = await updateNote(id, updates);
+      
+      if (!updatedNote) {
+        console.error('No response received from server');
+        return;
+      }
+      
+      console.log('Received response from server:', updatedNote);
+      
+      setNotes(prevNotes => 
+        prevNotes.map(note => 
+          note._id === id ? { ...note, ...updatedNote } : note
+        )
+      );
     } catch (err) {
-      console.error('Error updating note content:', err);
+      console.error('Error updating note:', err);
     }
   };
 
   const updateNotePosition = async (id, position) => {
     try {
-      // Update local state immediately for smooth UI
-      setNotes(notes.map(note => 
-        note._id === id ? { ...note, position } : note
-      ));
+      const noteUpdate = { position };
       
-      // Then update the database
-      await updateNote(id, { position });
+      setNotes(prevNotes => 
+        prevNotes.map(note => 
+          note._id === id ? { ...note, ...noteUpdate } : note
+        )
+      );
+      await updateNote(id, noteUpdate);
     } catch (err) {
       console.error('Error updating note position:', err);
-      // Revert to original position on error
-      const originalNote = notes.find(n => n._id === id);
-      if (originalNote) {
-        setNotes(notes.map(note => 
-          note._id === id ? originalNote : note
-        ));
-      }
     }
   };
 
   const updateNoteSize = async (id, size) => {
     try {
-      await updateNote(id, { size });
-      setNotes(notes.map(note => 
-        note._id === id ? { ...note, size } : note
-      ));
+      const noteUpdate = { size };
+      
+      await updateNote(id, noteUpdate);
+      setNotes(prevNotes => 
+        prevNotes.map(note => 
+          note._id === id ? { ...note, ...noteUpdate } : note
+        )
+      );
     } catch (err) {
       console.error('Error updating note size:', err);
     }
@@ -211,16 +130,8 @@ const Board = () => {
   }
 
   return (
-    <div 
-      ref={boardRef}
-      className="fixed inset-0 overflow-hidden bg-neutral-900 board-container"
-      onMouseDown={startDragging}
-      onMouseUp={stopDragging}
-      onMouseLeave={stopDragging}
-      onMouseMove={handleDrag}
-    >
-      <Canvas transform={transform} />
-      
+    <div className="fixed inset-0 overflow-hidden bg-neutral-900">
+      <div className="board-grid" />
       <div className="fixed bottom-6 right-6 z-50">
         <button
           onClick={() => setIsColorPickerOpen(!isColorPickerOpen)}
@@ -235,33 +146,23 @@ const Board = () => {
         />
       </div>
 
-      <div
-        className="notes-container"
-        style={{
-          position: 'absolute',
-          inset: 0,
-          transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
-          transformOrigin: '0 0'
-        }}
-      >
-        <AnimatePresence>
-          {notes.map(note => (
-            <Note
-              key={note._id}
-              id={note._id}
-              content={note.content}
-              position={note.position}
-              size={note.size}
-              backgroundColor={note.backgroundColor}
-              onDelete={handleDeleteNote}
-              onUpdate={updateNoteContent}
-              onUpdatePosition={updateNotePosition}
-              onUpdateSize={updateNoteSize}
-              transform={transform}
-              screenToWorld={screenToWorld}
-            />
-          ))}
-        </AnimatePresence>
+      <div className="absolute inset-0">
+        {notes.map(note => (
+          <Note
+            key={note._id}
+            id={note._id}
+            content={note.content}
+            title={note.title}
+            emoji={note.emoji}
+            position={note.position}
+            size={note.size}
+            backgroundColor={note.backgroundColor}
+            onDelete={handleDeleteNote}
+            onUpdate={updateNoteContent}
+            onUpdatePosition={updateNotePosition}
+            onUpdateSize={updateNoteSize}
+          />
+        ))}
       </div>
     </div>
   );

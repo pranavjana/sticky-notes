@@ -1,94 +1,68 @@
 import { useEffect, useRef } from 'react';
 
-const GRID_SIZE = 40;
-
-const Canvas = ({ transform }) => {
+const Canvas = ({ transform, boardSize, gridSize }) => {
   const canvasRef = useRef(null);
 
   const drawGrid = (ctx, width, height, transform) => {
     ctx.clearRect(0, 0, width, height);
     
+    // Calculate visible area in world coordinates
+    const visibleArea = {
+      left: -transform.x / transform.scale,
+      top: -transform.y / transform.scale,
+      right: (width - transform.x) / transform.scale,
+      bottom: (height - transform.y) / transform.scale
+    };
+
+    // Draw background
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(
+      Math.max(0, transform.x),
+      Math.max(0, transform.y),
+      Math.min(boardSize * transform.scale, width),
+      Math.min(boardSize * transform.scale, height)
+    );
+
     // Calculate grid parameters based on zoom
-    const gridSize = GRID_SIZE * transform.scale;
+    const scaledGridSize = gridSize * transform.scale;
     
-    // Calculate grid offset based on transform
-    const offsetX = transform.x % gridSize;
-    const offsetY = transform.y % gridSize;
+    // Calculate visible grid lines
+    const startX = Math.max(0, Math.floor(visibleArea.left / gridSize) * gridSize);
+    const startY = Math.max(0, Math.floor(visibleArea.top / gridSize) * gridSize);
+    const endX = Math.min(boardSize, Math.ceil(visibleArea.right / gridSize) * gridSize);
+    const endY = Math.min(boardSize, Math.ceil(visibleArea.bottom / gridSize) * gridSize);
 
-    // Adapt opacity and line width based on zoom level
-    const baseOpacity = Math.min(0.2, Math.max(0.05, transform.scale * 0.1));
-    const lineWidth = Math.max(0.5, transform.scale * 0.5);
+    // Draw grid lines
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.lineWidth = 1;
 
-    // Draw small grid
-    ctx.strokeStyle = `rgba(255, 255, 255, ${baseOpacity})`;
-    ctx.lineWidth = lineWidth;
-
-    // Draw vertical lines
-    for (let x = offsetX; x <= width; x += gridSize) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
+    // Vertical lines
+    for (let x = startX; x <= endX; x += gridSize) {
+      const screenX = x * transform.scale + transform.x;
+      ctx.moveTo(screenX, Math.max(0, transform.y));
+      ctx.lineTo(screenX, Math.min(height, boardSize * transform.scale + transform.y));
     }
 
-    // Draw horizontal lines
-    for (let y = offsetY; y <= height; y += gridSize) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
+    // Horizontal lines
+    for (let y = startY; y <= endY; y += gridSize) {
+      const screenY = y * transform.scale + transform.y;
+      ctx.moveTo(Math.max(0, transform.x), screenY);
+      ctx.lineTo(Math.min(width, boardSize * transform.scale + transform.x), screenY);
     }
 
-    // Draw larger grid (5x5)
-    const largeGridSize = gridSize * 5;
-    const largeOffsetX = transform.x % largeGridSize;
-    const largeOffsetY = transform.y % largeGridSize;
-    
-    // Make large grid lines bolder and more visible
-    ctx.strokeStyle = `rgba(255, 255, 255, ${baseOpacity * 2})`;
-    ctx.lineWidth = lineWidth * 1.5;
+    ctx.stroke();
 
-    // Draw large vertical lines
-    for (let x = largeOffsetX; x <= width; x += largeGridSize) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
-    }
-
-    // Draw large horizontal lines
-    for (let y = largeOffsetY; y <= height; y += largeGridSize) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
-    }
-
-    // Draw extra large grid (25x25) when zoomed out
-    if (transform.scale < 0.5) {
-      const extraLargeGridSize = largeGridSize * 5;
-      const extraLargeOffsetX = transform.x % extraLargeGridSize;
-      const extraLargeOffsetY = transform.y % extraLargeGridSize;
-      
-      ctx.strokeStyle = `rgba(255, 255, 255, ${baseOpacity * 3})`;
-      ctx.lineWidth = lineWidth * 2;
-
-      // Draw extra large vertical lines
-      for (let x = extraLargeOffsetX; x <= width; x += extraLargeGridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
-        ctx.stroke();
-      }
-
-      // Draw extra large horizontal lines
-      for (let y = extraLargeOffsetY; y <= height; y += extraLargeGridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-        ctx.stroke();
-      }
-    }
+    // Draw board boundary
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(
+      transform.x,
+      transform.y,
+      boardSize * transform.scale,
+      boardSize * transform.scale
+    );
   };
 
   useEffect(() => {
@@ -118,7 +92,7 @@ const Canvas = ({ transform }) => {
 
     const ctx = canvas.getContext('2d');
     drawGrid(ctx, canvas.width, canvas.height, transform);
-  }, [transform]);
+  }, [transform, boardSize, gridSize]);
 
   return (
     <canvas
